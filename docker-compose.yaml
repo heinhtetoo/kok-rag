@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  # FastAPI Microservice
+  api:
+    build: .
+    ports: 
+      - "8000:8000"
+    environment:
+      # Points the python script to the container named "ollama"
+      - OLLAMA_HOST=http://ollama:11434
+    depends_on:
+      - ollama
+
+  # Local LLM Engine
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      # Save the downloaded models on machine so they aren't lost when the container stops
+      - ollama_data:/root/.ollama
+
+volumes:
+  ollama_data:

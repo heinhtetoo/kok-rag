@@ -1,8 +1,13 @@
+import os
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import chromadb
 from chromadb.utils import embedding_functions
 import ollama
+from ollama import Client
+
+OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+ollama_client = Client(host=OLLAMA_HOST)
 
 # Initialise the FastAPI app
 app = FastAPI(title="Kök RAG API")
@@ -47,7 +52,7 @@ async def ask_kok(request: QueryRequest):
         """
 
         # GENERATION
-        response = ollama.generate(
+        response = ollama_client.generate(
             model="llama3.2:3b",
             prompt=prompt
         )

@@ -4,6 +4,7 @@ services:
   # FastAPI Microservice
   api:
     build: .
+    container_name: kok-api
     ports: 
       - "8000:8000"
     environment:
@@ -12,9 +13,21 @@ services:
     depends_on:
       - ollama
 
+  # Web Dashboard
+  ui:
+    build: .
+    container_name: kok-ui
+    # Overrides the default Uvicorn command in the Dockerfile
+    command: ["streamlit", "run", "src/ui.py", "--server.port=8501", "--server.address=0.0.0.0"]
+    ports:
+      - "8501:8501"
+    depends_on:
+      - api
+
   # Local LLM Engine
   ollama:
     image: ollama/ollama:latest
+    container_name: ollama
     ports:
       - "11434:11434"
     volumes:

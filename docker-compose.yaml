@@ -1,38 +1,41 @@
-version: '3.8'
+version: "3.8"
 
 services:
   # FastAPI Microservice
   api:
     build: .
     container_name: kok-api
-    ports: 
+    ports:
       - "8000:8000"
     environment:
       # Points the python script to the container named "ollama"
       - OLLAMA_HOST=http://ollama:11434
-    depends_on:
-      - ollama
+      - OLLAMA_MODEL=qwen2.5:7b
+    networks:
+      - default
+      - shared_llm_net
 
   # Web Dashboard
   ui:
     build: .
     container_name: kok-ui
     # Overrides the default Uvicorn command in the Dockerfile
-    command: ["streamlit", "run", "src/ui.py", "--server.port=8501", "--server.address=0.0.0.0"]
+    command:
+      [
+        "streamlit",
+        "run",
+        "src/ui.py",
+        "--server.port=8501",
+        "--server.address=0.0.0.0",
+      ]
     ports:
       - "8501:8501"
     depends_on:
       - api
+    networks:
+      - default
 
-  # Local LLM Engine
-  ollama:
-    image: ollama/ollama:latest
-    container_name: ollama
-    ports:
-      - "11434:11434"
-    volumes:
-      # Save the downloaded models on machine so they aren't lost when the container stops
-      - ollama_data:/root/.ollama
-
-volumes:
-  ollama_data:
+networks:
+  # Define the shared network
+  shared_llm_net:
+    external: true

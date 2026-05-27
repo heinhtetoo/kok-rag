@@ -1,7 +1,9 @@
 import os
-import requests
-from bs4 import BeautifulSoup
 import re
+import uuid
+import requests
+from urllib.parse import urlparse
+from bs4 import BeautifulSoup
 
 def scrape_burmese_recipe(url):
     print(f"Scraping: {url}...")
@@ -21,31 +23,37 @@ def scrape_burmese_recipe(url):
 
     # Extract the recipe name
     name_tag = soup.find('h3', class_="ccm-name")
-    # Fallback to "Unknown Recipe" if the tag isn't found
-    recipe_name = name_tag.get_text(strip=True) if name_tag else "Unknown Recipe"
+    if name_tag:
+        recipe_name = name_tag.get_text(strip=True)
+    else:
+        parsed_url = urlparse(url)
+        slug = parsed_url.path.strip('/').split('/')[-1]
+        recipe_name = slug if slug else uuid.uuid4().hex
 
     # Extract ingredients
     ingredients_div = soup.find('div', class_="ccm-section-ingredients")
     ingredients = []
     if ingredients_div:
-        # Find all list items since checkboxes usually use <li> tags inside a <ul>
-        for item in ingredients_div.find_all('li'):
-            ingredients.append(item.get_text(strip=True))
+        # Target the 'span' inside the 'li' to extract only the text, ignoring checkboxes
+        for item in ingredients_div.find_all('li', itemprop="recipeIngredient"):
+            span = item.find('span')
+            if span:
+                ingredients.append(span.get_text(strip=True))
 
     # Extract instructions
     instructions_div = soup.find('div', class_="ccm-section-instructions")
     instructions = []
     if instructions_div:
-        # Instructions might be in <li> or <p> tags depending on the plugin formatting
-        for item in instructions_div.find_all(['li', 'p']):
-            text = item.get_text(strip=True)
-            if text:
-                instructions.append(text)
+        # Target the span inside the instruction list items
+        for item in instructions_div.find_all('li', itemprop="recipeInstructions"):
+            span = item.find('span')
+            if span:
+                instructions.append(span.get_text(strip=True))
 
     # Format the final output text
     recipe_text = f"Title: {recipe_name}\nSource: {url}\n\n"
 
-    recipe_text += "INGREDIENTS:\n"
+    recipe_text += "\nINGREDIENTS:\n"
     if ingredients:
         for ing in ingredients:
             recipe_text += f"- {ing}\n"

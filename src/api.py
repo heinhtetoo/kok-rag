@@ -7,6 +7,7 @@ import ollama
 from ollama import Client
 
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:7b")
 ollama_client = Client(host=OLLAMA_HOST)
 
 # Initialise the FastAPI app
@@ -53,7 +54,7 @@ async def ask_kok(request: QueryRequest):
 
         # GENERATION
         response = ollama_client.generate(
-            model="llama3.2:3b",
+            model=OLLAMA_MODEL,
             prompt=prompt
         )
 

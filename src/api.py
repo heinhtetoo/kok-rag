@@ -4,9 +4,10 @@ from pydantic import BaseModel
 import chromadb
 from chromadb.utils import embedding_functions
 from ollama import Client
-from scrape import scrape_recipe
-from ingest import ingest_recipe_chunks
-from embed import embed_chunks
+
+from src.scrape import scrape_recipe
+from src.ingest import ingest_recipe_chunks
+from src.embed import embed_chunks
 
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:7b")

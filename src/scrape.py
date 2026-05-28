@@ -4,7 +4,7 @@ import uuid
 import requests
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
-from constants import RECIPE_DIR
+from src.constants import RECIPE_DIR
 
 def scrape_recipe(url: str) -> str | None:
     if "theburmalicious" in url:

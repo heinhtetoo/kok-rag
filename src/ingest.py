@@ -1,6 +1,6 @@
 import os
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from constants import RECIPE_DIR
+from src.constants import RECIPE_DIR
 
 def ingest_recipe_chunks(filename: str = None) -> list[str]:
     chunks = []

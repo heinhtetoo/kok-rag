@@ -8,6 +8,7 @@ from ollama import Client
 from src.scrape import scrape_recipe
 from src.ingest import ingest_recipe_chunks
 from src.embed import embed_chunks
+from src.constants import VECTOR_DB_DIR, COLLECTION_NAME
 
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:7b")
@@ -34,9 +35,9 @@ class IngestResponse(BaseModel):
     chunks_added: int
 
 # Global setup for the Vector DB to avoid reconnecting on every request
-client = chromadb.PersistentClient(path="vector_db")
+client = chromadb.PersistentClient(path=VECTOR_DB_DIR)
 ef = embedding_functions.SentenceTransformerEmbeddingFunction(model_name="all-MiniLM-L6-v2")
-collection = client.get_or_create_collection(name="culinary_recipes", embedding_function=ef)
+collection = client.get_or_create_collection(name=COLLECTION_NAME, embedding_function=ef)
 
 @app.post("/ask", response_model=QueryResponse)
 async def ask_kok(request: QueryRequest):

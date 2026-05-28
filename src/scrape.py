@@ -4,8 +4,16 @@ import uuid
 import requests
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
+from constants import RECIPE_DIR
 
-def scrape_burmese_recipe(url):
+def scrape_recipe(url: str) -> str | None:
+    if "theburmalicious" in url:
+        return scrape_theburmalicious_recipe(url)
+    else:
+        print(f"Scraping not implemented for {url}. Please use a supported recipe URL.")
+        return None
+
+def scrape_theburmalicious_recipe(url: str) -> str | None:
     print(f"Scraping: {url}...")
 
     # Fetch the webpage
@@ -16,7 +24,7 @@ def scrape_burmese_recipe(url):
 
     if response.status_code != 200:
         print(f"Failed to fetch page. Status code: {response.status_code}")
-        return
+        return None
     
     # Parse the HTML
     soup = BeautifulSoup(response.text, 'html.parser')
@@ -69,16 +77,14 @@ def scrape_burmese_recipe(url):
 
     # Save it to data directory
     filename = re.sub(r'[^a-z0-9]', '-', recipe_name.lower()) + ".txt"
-    filepath = os.path.join("data/recipes", filename)
+    filepath = os.path.join(RECIPE_DIR, filename)
 
     # Ensure the directory exists
-    os.makedirs("data/recipes", exist_ok=True)
+    os.makedirs(RECIPE_DIR, exist_ok=True)
 
     with open(filepath, "w", encoding='utf-8') as f:
         f.write(recipe_text)
 
     print(f"Successfully saved {recipe_name} to {filepath}")
 
-if __name__ == "__main__":
-    test_url = "https://www.theburmalicious.com/blog/laphet"
-    scrape_burmese_recipe(test_url)
+    return filename

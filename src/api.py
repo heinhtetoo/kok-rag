@@ -45,7 +45,7 @@ async def ask_kok(request: QueryRequest):
         # RETRIEVAL
         results = collection.query(
             query_texts=[request.question],
-            n_results=2
+            n_results=5
         )
 
         retrieved_chunks = results['documents'][0]

@@ -68,7 +68,6 @@ async def ask_kok(request: QueryRequest):
         # GENERATION
         response = ollama_client.chat(
             model=OLLAMA_MODEL,
-            prompt=prompt,
             messages=[
                 {"role": "system", "content": prompt},
                 {"role": "user", "content": request.question}

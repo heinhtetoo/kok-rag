@@ -54,8 +54,8 @@ async def ask_kok(request: QueryRequest):
         # AUGMENTATION
         prompt = f"""
         You are a precise and helpful sous-chef, named Kök. Answer the user's question using ONLY the context provided below. 
-        If the answer is not in the context or the question is outside the scope of the provided context, say "I don't have that in your recipe book." 
-        Do not make up cooking times or ingredients.
+        If the provided context does not contain the answer, politely say "I don't have that in your recipe book." 
+        Do not make up cooking times, ingredients, or instructions. Format your response cleanly.
 
         Context:
         {context}
@@ -66,9 +66,17 @@ async def ask_kok(request: QueryRequest):
         """
 
         # GENERATION
-        response = ollama_client.generate(
+        response = ollama_client.chat(
             model=OLLAMA_MODEL,
-            prompt=prompt
+            prompt=prompt,
+            messages=[
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": request.question}
+            ],
+            options={
+                "temperature": 0.0,
+                "top_p": 0.9
+            }
         )
 
         return QueryResponse(

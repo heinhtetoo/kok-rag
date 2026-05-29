@@ -79,7 +79,7 @@ async def ask_kok(request: QueryRequest):
         )
 
         return QueryResponse(
-            answer=response['response'].strip(),
+            answer=response['message']['content'].strip(),
             sources=retrieved_chunks # Returning the sources for UI debugging
         )
     

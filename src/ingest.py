@@ -8,9 +8,9 @@ def ingest_recipe_chunks(filename: str = None) -> list[str]:
     # Initialise a splitter that looks for natural breaks (newlines, periods)
     # Chunks are to be around 200 characters with a small overlap so context isn't lost
     splitter = RecursiveCharacterTextSplitter(
-        chunk_size=200,
-        chunk_overlap=30,
-        separators=["\n\n", "\n", " ", ""]
+        chunk_size=800,
+        chunk_overlap=150,
+        separators=["\n\n", "\n", ". ", " ", "."]
     )
 
     if filename in os.listdir(RECIPE_DIR) and filename.endswith(".txt"):

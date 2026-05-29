@@ -49,27 +49,39 @@ async def ask_kok(request: QueryRequest):
         )
 
         retrieved_chunks = results['documents'][0]
-        context = "\n\n---\n\n".join(retrieved_chunks)
+        distances = results['distances'][0] if 'distances' in results else []
+
+        # Check if the database is empty or if the results are irrelevant
+        # Find closer matches in the ChromaDB
+        valid_chunks = []
+        for i, chunk in enumerate(retrieved_chunks):
+            if i < len(distances) and distances[i] < 1.5:
+                valid_chunks.append(chunk)
+
+        # Stop if no valid chunks survived the threshold
+        if not valid_chunks:
+            return QueryResponse(
+                answer="I don't have that in your recipe book.",
+                sources=[]
+            )
+
+        context = "\n\n---\n\n".join(valid_chunks)
 
         # AUGMENTATION
-        prompt = f"""
+        system_prompt = f"""
         You are a precise and helpful sous-chef, named Kök. Answer the user's question using ONLY the context provided below. 
         If the provided context does not contain the answer, politely say "I don't have that in your recipe book." 
         Do not make up cooking times, ingredients, or instructions. Format your response cleanly.
 
         Context:
         {context}
-        
-        Question: {request.question}
-        
-        Answer:
         """
 
         # GENERATION
         response = ollama_client.chat(
             model=OLLAMA_MODEL,
             messages=[
-                {"role": "system", "content": prompt},
+                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": request.question}
             ],
             options={

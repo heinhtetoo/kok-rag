@@ -1,21 +1,45 @@
 import os
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Security, Depends
+from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
 import chromadb
 from chromadb.utils import embedding_functions
 from ollama import Client
+from dotenv import load_model, load_dotenv
+from starlette.status import HTTP_403_FORBIDDEN
 
 from src.scrape import scrape_recipe
 from src.ingest import ingest_recipe_chunks
 from src.embed import embed_chunks
 from src.constants import VECTOR_DB_DIR, COLLECTION_NAME
 
-OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:7b")
-ollama_client = Client(host=OLLAMA_HOST)
+# Load environment variables from .env file
+load_dotenv()
 
 # Initialise the FastAPI app
 app = FastAPI(title="Kök RAG API")
+
+API_KEY_NAME = "X-API-Key"
+api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
+
+MASTER_API_KEY = os.getenv("KOK_API_KEY")
+
+if not MASTER_API_KEY:
+    raise RuntimeError("KOK_API_KEY environment variable is missing!")
+
+async def verify_api_key(api_key: str = Depends(api_key_header)):
+    """Dependency function to validate incoming API keys."""
+    if api_key == MASTER_API_KEY:
+        return api_key
+    
+    raise HTTPException(
+        status_code=HTTP_403_FORBIDDEN,
+        detail="Could not validate credentials. Invalid or missing API Key."
+    )
+
+OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:7b")
+ollama_client = Client(host=OLLAMA_HOST)
 
 # Define the data structure for incoming requests
 class QueryRequest(BaseModel):
@@ -39,7 +63,8 @@ client = chromadb.PersistentClient(path=VECTOR_DB_DIR)
 ef = embedding_functions.SentenceTransformerEmbeddingFunction(model_name="all-MiniLM-L6-v2")
 collection = client.get_or_create_collection(name=COLLECTION_NAME, embedding_function=ef)
 
-@app.post("/ask", response_model=QueryResponse)
+@app.post("/ask", response_model=QueryResponse, 
+          dependencies=[Depends(verify_api_key)])
 async def ask_kok(request: QueryRequest):
     try:
         # RETRIEVAL
@@ -98,7 +123,8 @@ async def ask_kok(request: QueryRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
-@app.post("/ingest", response_model=IngestResponse)
+@app.post("/ingest", response_model=IngestResponse,
+          dependencies=[Depends(verify_api_key)])
 async def ingest_url(request: IngestRequest):
     try:
         # SCRAPE the recipe from the provided URL

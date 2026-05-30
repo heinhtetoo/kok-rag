@@ -5,7 +5,7 @@ from pydantic import BaseModel
 import chromadb
 from chromadb.utils import embedding_functions
 from ollama import Client
-from dotenv import load_model, load_dotenv
+from dotenv import load_dotenv
 from starlette.status import HTTP_403_FORBIDDEN
 
 from src.scrape import scrape_recipe

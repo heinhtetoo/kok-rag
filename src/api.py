@@ -72,10 +72,25 @@ collection = client.get_or_create_collection(name=COLLECTION_NAME, embedding_fun
           dependencies=[Depends(verify_api_key)])
 async def ask_kok(request: QueryRequest):
     try:
-        # RETRIEVAL
+        # Build metadata filter dynamically
+        where_clause = {}
+        conditions = []
+
+        if request.cuisine_filter:
+            conditions.append({"cuisine": request.cuisine_filter})
+        if request.dish_type_filter:
+            conditions.append({"dish_type": request.dish_type_filter})
+
+        if len(conditions) == 1:
+            where_clause = conditions[0]
+        elif len(conditions) > 1:
+            where_clause = {"$and": conditions}
+
+        # RETRIEVAL with conditions
         results = collection.query(
             query_texts=[request.question],
-            n_results=5
+            n_results=5,
+            where=where_clause if where_clause else None
         )
 
         retrieved_chunks = results['documents'][0]

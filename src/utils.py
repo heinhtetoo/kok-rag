@@ -1,7 +1,4 @@
-import json
-from ollama import Ollama
-
-def extract_filters_from_query(query: str, ollama_client: Ollama, model: str) -> dict:
+def extract_filters_from_query(query: str, ollama_client: any, model: str) -> dict:
     """
     Uses the LLM to parse natural language into metadata filters.
 
@@ -13,6 +10,15 @@ def extract_filters_from_query(query: str, ollama_client: Ollama, model: str) ->
     Returns:
         dict: A dictionary containing the extracted filters.
     """
+    import json
+    from ollama import Client
+
+    if ollama_client is None or not isinstance(ollama_client, Client):
+        print("Ollama client is not initialised.")
+        return {"cuisine": None, "dish_type": None}
+    elif model is None:
+        print("Model name is not provided.")
+        return {"cuisine": None, "dish_type": None}
 
     system_prompt = """
     You are a strict data extraction routing agent. Analyze the user's query and extract the 'cuisine' and 'dish_type' if they are mentioned.

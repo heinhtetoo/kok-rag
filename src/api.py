@@ -12,6 +12,7 @@ from typing import Optional
 from src.scrape import scrape_recipe
 from src.ingest import ingest_recipe_chunks
 from src.embed import embed_chunks
+from src.utils import extract_filters_from_query
 from src.constants import VECTOR_DB_DIR, COLLECTION_NAME
 
 # Define the data structure for incoming requests
@@ -72,14 +73,19 @@ collection = client.get_or_create_collection(name=COLLECTION_NAME, embedding_fun
           dependencies=[Depends(verify_api_key)])
 async def ask_kok(request: QueryRequest):
     try:
+        # Extract filters from the user's query using the LLM
+        extracted_filters = extract_filters_from_query(request.question, ollama_client, OLLAMA_MODEL)
+        print(f"Extracted Filters: {extracted_filters}")
+
         # Build metadata filter dynamically
         where_clause = {}
         conditions = []
 
-        if request.cuisine_filter:
-            conditions.append({"cuisine": request.cuisine_filter})
-        if request.dish_type_filter:
-            conditions.append({"dish_type": request.dish_type_filter})
+        if extracted_filters.get("cuisine"):
+            conditions.append({"cuisine": extracted_filters["cuisine"].capitalize()})
+
+        if extracted_filters.get("dish_type"):
+            conditions.append({"dish_type": extracted_filters["dish_type"].capitalize()})
 
         if len(conditions) == 1:
             where_clause = conditions[0]

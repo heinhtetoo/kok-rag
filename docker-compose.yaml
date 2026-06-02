@@ -10,9 +10,13 @@ services:
     env_file:
       - .env
     environment:
-      # Points the python script to the container named "ollama"
+      # Point the python script to the container named "ollama"
       - OLLAMA_HOST=http://ollama:11434
       - OLLAMA_MODEL=qwen2.5:7b
+    volumes:
+      # Map the host's relative directory to the container's app directory
+      - ./vector_db:/app/vector_db
+      - ./data:app/data
     networks:
       - default
       - shared_llm_net

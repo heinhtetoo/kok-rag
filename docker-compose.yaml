@@ -16,7 +16,7 @@ services:
     volumes:
       # Map the host's relative directory to the container's app directory
       - ./vector_db:/app/vector_db
-      - ./data:app/data
+      - ./data:/app/data
     networks:
       - default
       - shared_llm_net

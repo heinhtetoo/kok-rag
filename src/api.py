@@ -7,11 +7,33 @@ from chromadb.utils import embedding_functions
 from ollama import Client
 from dotenv import load_dotenv
 from starlette.status import HTTP_403_FORBIDDEN
+from typing import Optional
 
 from src.scrape import scrape_recipe
 from src.ingest import ingest_recipe_chunks
 from src.embed import embed_chunks
 from src.constants import VECTOR_DB_DIR, COLLECTION_NAME
+
+# Define the data structure for incoming requests
+class QueryRequest(BaseModel):
+    question: str
+    cuisine_filter: Optional[str] = None
+    dish_type_filter: Optional[str] = None
+
+# Define the data structure for the response
+class QueryResponse(BaseModel):
+    answer: str
+    sources: list[str]
+
+class IngestRequest(BaseModel):
+    url: str
+    cuisine: str = "Unknown"        # e.g., "Burmese", "Italian"
+    dish_type: str = "Unknown"      # e.g., "Soup", "Salad", "Main"
+
+class IngestResponse(BaseModel):
+    message: str
+    title: str
+    chunks_added: int
 
 # Load environment variables from .env file
 load_dotenv()
@@ -40,23 +62,6 @@ async def verify_api_key(api_key: str = Depends(api_key_header)):
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:7b")
 ollama_client = Client(host=OLLAMA_HOST)
-
-# Define the data structure for incoming requests
-class QueryRequest(BaseModel):
-    question: str
-
-# Define the data structure for the response
-class QueryResponse(BaseModel):
-    answer: str
-    sources: list[str]
-
-class IngestRequest(BaseModel):
-    url: str
-
-class IngestResponse(BaseModel):
-    message: str
-    title: str
-    chunks_added: int
 
 # Global setup for the Vector DB to avoid reconnecting on every request
 client = chromadb.PersistentClient(path=VECTOR_DB_DIR)
@@ -138,7 +143,7 @@ async def ingest_url(request: IngestRequest):
             raise HTTPException(status_code=400, detail="Failed to ingest the recipe. No chunks were created.")
 
         # EMBED the chunks into the vector database
-        chunks_added = embed_chunks(chunks, collection)
+        chunks_added = embed_chunks(chunks, collection, request.url, request.cuisine, request.dish_type)
         if not chunks_added:
             raise HTTPException(status_code=400, detail="Failed to embed the recipe chunks.")
 

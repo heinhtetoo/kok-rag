@@ -25,7 +25,7 @@ def extract_filters_from_query(query: str, ollama_client: any, model: str) -> di
     
     Rules:
     - If a cuisine is mentioned (e.g., Burmese, Italian), set "cuisine" to that value.
-    - If a dish type is mentioned (e.g., Soup, Salad, Curry, Noodle), set "dish_type" to that value.
+    - If a single-word dish type is mentioned (e.g., Soup, Salad, Curry, Noodle), set "dish_type" to that value.
     - If either is missing, set the value to null.
     - You must ONLY output a valid JSON object. Do not add any conversational text.
     

@@ -22,6 +22,6 @@ def ingest_recipe_chunks(filename: str = None) -> list[str]:
             file_chunks = splitter.split_text(text)
             chunks.extend(file_chunks)
 
-            print(f"Loaded {filename}: Split into {len(file_chunks)} chunks.")
+            print(f"[INFO] Loaded {filename}: Split into {len(file_chunks)} chunks.")
 
     return chunks

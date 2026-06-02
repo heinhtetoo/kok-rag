@@ -75,7 +75,7 @@ async def ask_kok(request: QueryRequest):
     try:
         # Extract filters from the user's query using the LLM
         extracted_filters = extract_filters_from_query(request.question, ollama_client, OLLAMA_MODEL)
-        print(f"Extracted Filters: {extracted_filters}")
+        print(f"[INFO] Extracted Filters: {extracted_filters}")
 
         # Build metadata filter dynamically
         where_clause = {}

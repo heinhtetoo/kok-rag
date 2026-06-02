@@ -14,10 +14,10 @@ def extract_filters_from_query(query: str, ollama_client: any, model: str) -> di
     from ollama import Client
 
     if ollama_client is None or not isinstance(ollama_client, Client):
-        print("Ollama client is not initialised.")
+        print("[ERROR] Ollama client is not initialised.")
         return {"cuisine": None, "dish_type": None}
     elif model is None:
-        print("Model name is not provided.")
+        print("[ERROR] Model name is not provided.")
         return {"cuisine": None, "dish_type": None}
 
     system_prompt = """
@@ -56,5 +56,5 @@ def extract_filters_from_query(query: str, ollama_client: any, model: str) -> di
         return filters
     
     except Exception as e:
-        print(f"Filter extraction failed, defaulting to no filters: {e}")
+        print(f"[ERROR] Filter extraction failed, defaulting to no filters: {e}")
         return {"cuisine": None, "dish_type": None}

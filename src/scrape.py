@@ -10,11 +10,11 @@ def scrape_recipe(url: str) -> str | None:
     if "theburmalicious" in url:
         return scrape_theburmalicious_recipe(url)
     else:
-        print(f"Scraping not implemented for {url}. Please use a supported recipe URL.")
+        print(f"[ERROR] Scraping not implemented for {url}. Please use a supported recipe URL.")
         return None
 
 def scrape_theburmalicious_recipe(url: str) -> str | None:
-    print(f"Scraping: {url}...")
+    print(f"[INFO] Scraping: {url}...")
 
     # Fetch the webpage
     headers = {
@@ -23,7 +23,7 @@ def scrape_theburmalicious_recipe(url: str) -> str | None:
     response = requests.get(url, headers=headers)
 
     if response.status_code != 200:
-        print(f"Failed to fetch page. Status code: {response.status_code}")
+        print(f"[ERROR] Failed to fetch page. Status code: {response.status_code}")
         return None
     
     # Parse the HTML
@@ -85,6 +85,6 @@ def scrape_theburmalicious_recipe(url: str) -> str | None:
     with open(filepath, "w", encoding='utf-8') as f:
         f.write(recipe_text)
 
-    print(f"Successfully saved {recipe_name} to {filepath}")
+    print(f"[INFO] Successfully saved {recipe_name} to {filepath}")
 
     return filename

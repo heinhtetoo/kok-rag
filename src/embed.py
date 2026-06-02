@@ -18,5 +18,5 @@ def embed_chunks(chunks: list[str], collection: chromadb.Collection, url: str, c
         metadatas=metadatas
     )
 
-    print(f"Successfully stored {len(chunks)} chunks in the vector database!")
+    print(f"[INFO] Successfully stored {len(chunks)} chunks in the vector database!")
     return len(chunks)

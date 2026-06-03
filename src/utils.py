@@ -67,6 +67,8 @@ def load_parent_store(store_path: str, ):
         with open(store_path, "r", encoding="utf-8") as f:
             return json.load(f)
         
+    return {}
+
 def save_parent(parent_store_path: str, parent_id: str, text: str):
     import json
 

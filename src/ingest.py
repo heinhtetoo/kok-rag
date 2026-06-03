@@ -3,7 +3,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from src.constants import RECIPE_DIR, PARENT_STORE_PATH
 from src.utils import save_parent
 
-def ingest_recipe_chunks(filename: str = None, recipe_text: str = None) -> list[str]:
+def ingest_recipe_chunks(filename: str = None) -> list[str]:
     chunks = []
 
     # Initialise a splitter that looks for natural breaks (newlines, periods)

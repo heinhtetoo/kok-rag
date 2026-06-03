@@ -112,6 +112,8 @@ async def ask_kok(request: QueryRequest):
         children_metadata = results['metadatas'][0]
         unique_parent_ids = list(set([meta["parent_id"] for meta in children_metadata]))
 
+        print(f"[INFO] Retrieved {len(results['documents'])} relevant chunks with parent ids {unique_parent_ids}.")
+
         parent_store = load_parent_store(PARENT_STORE_PATH)
         candidate_parents = [parent_store[pid] for pid in unique_parent_ids if pid in parent_store]
 

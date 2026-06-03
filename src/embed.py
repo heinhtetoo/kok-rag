@@ -1,11 +1,12 @@
 import chromadb
 
-def embed_chunks(chunks: list[str], collection: chromadb.Collection, url: str, cuisine: str, dish_type: str) -> int:
+def embed_chunks(chunks: list[str], parent_id: str, collection: chromadb.Collection, url: str, cuisine: str, dish_type: str) -> int:
     # Chroma requires a unique ID for every single chunk
-    ids = [f"recipe_chunk_{i}" for i in range(len(chunks))]
+    ids = [f"{parent_id}_child_{i}" for i in range(len(chunks))]
 
     # Generate metadata for each chunk
     metadatas = [{
+        "parent_id": parent_id,
         "source": url,
         "cuisine": cuisine,
         "dish_type": dish_type

@@ -8,12 +8,13 @@ from ollama import Client
 from dotenv import load_dotenv
 from starlette.status import HTTP_403_FORBIDDEN
 from typing import Optional
+from sentence_transformers import CrossEncoder
 
 from src.scrape import scrape_recipe
 from src.ingest import ingest_recipe_chunks
 from src.embed import embed_chunks
-from src.utils import extract_filters_from_query
-from src.constants import VECTOR_DB_DIR, COLLECTION_NAME
+from src.utils import extract_filters_from_query, load_parent_store
+from src.constants import VECTOR_DB_DIR, COLLECTION_NAME, PARENT_STORE_PATH
 
 # Define the data structure for incoming requests
 class QueryRequest(BaseModel):
@@ -69,6 +70,11 @@ client = chromadb.PersistentClient(path=VECTOR_DB_DIR)
 ef = embedding_functions.SentenceTransformerEmbeddingFunction(model_name="all-MiniLM-L6-v2")
 collection = client.get_or_create_collection(name=COLLECTION_NAME, embedding_function=ef)
 
+# Initialize the Cross-Encoder for Re-Ranking
+# This model is tiny (~90MB) and highly optimized for scoring relevance
+print("Loading Cross-Encoder model...")
+cross_encoder = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
+
 @app.post("/ask", response_model=QueryResponse, 
           dependencies=[Depends(verify_api_key)])
 async def ask_kok(request: QueryRequest):
@@ -95,28 +101,40 @@ async def ask_kok(request: QueryRequest):
         # RETRIEVAL with conditions
         results = collection.query(
             query_texts=[request.question],
-            n_results=5,
+            n_results=20,
             where=where_clause if where_clause else None
         )
 
-        retrieved_chunks = results['documents'][0]
-        distances = results['distances'][0] if 'distances' in results else []
+        if not results['documents'][0]:
+            return QueryResponse(answer="I don't have that in your recipe book.",sources=[])
+        
+        # PARENT RESOLUTION: Find the unique parents of those 20 children
+        children_metadata = results['metadatas'][0]
+        unique_parent_ids = list(set([meta["parent_id"] for meta in children_metadata]))
 
-        # Check if the database is empty or if the results are irrelevant
-        # Find closer matches in the ChromaDB
-        valid_chunks = []
-        for i, chunk in enumerate(retrieved_chunks):
-            if i < len(distances) and distances[i] < 1.5:
-                valid_chunks.append(chunk)
+        parent_store = load_parent_store(PARENT_STORE_PATH)
+        candidate_parents = [parent_store[pid] for pid in unique_parent_ids if pid in parent_store]
 
-        # Stop if no valid chunks survived the threshold
-        if not valid_chunks:
-            return QueryResponse(
-                answer="I don't have that in your recipe book.",
-                sources=[]
-            )
+        if not candidate_parents:
+            return QueryResponse(answer="I couldn't reconstruct the recipe.", sources=[])
+        
+        # RE-RANKING: The Cross-Encoder scores the full recipes against the user's question
+        # Create pairs: [(question, recipe1), (question, recipe2)]
+        pairs = [[request.question, parent_text] for parent_text in candidate_parents]
+        scores = cross_encoder.predict(pairs)
 
-        context = "\n\n---\n\n".join(valid_chunks)
+        # Combine the scores with the recipes and sort them from highest to lowest
+        scored_parents = list(zip(scores, candidate_parents))
+        scored_parents.sort(key=lambda x: x[0], reverse=True)
+
+        # GUARDRAIL: Only take the top 1 or 2 best full recipes
+        # Cross-Encoder scores are logits (often ranging from -10 to +10)
+        top_parents = [doc for score, doc in scored_parents[:2] if score > 0]
+
+        if not top_parents:
+            return QueryResponse(answer="I found some recipes, but none seemed to directly answer your question.", sources=[])
+
+        context = "\n\n---\n\n".join(top_parents)
 
         # AUGMENTATION
         system_prompt = f"""
@@ -143,7 +161,7 @@ async def ask_kok(request: QueryRequest):
 
         return QueryResponse(
             answer=response['message']['content'].strip(),
-            sources=retrieved_chunks # Returning the sources for UI debugging
+            sources=top_parents # Returning the sources for UI debugging
         )
     
     except Exception as e:
@@ -169,7 +187,7 @@ async def ingest_url(request: IngestRequest):
             raise HTTPException(status_code=400, detail="Failed to embed the recipe chunks.")
 
         return IngestResponse(
-            message="Recipe ingested successfully.",
+            message="Successfully ingested with Parent-Child chunking!",
             title=recipe_file,
             chunks_added=chunks_added
         )

@@ -58,3 +58,19 @@ def extract_filters_from_query(query: str, ollama_client: any, model: str) -> di
     except Exception as e:
         print(f"[ERROR] Filter extraction failed, defaulting to no filters: {e}")
         return {"cuisine": None, "dish_type": None}
+    
+def load_parent_store(store_path: str, ):
+    import os
+    import json
+
+    if os.path.exists(store_path):
+        with open(store_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+        
+def save_parent(parent_store_path: str, parent_id: str, text: str):
+    import json
+
+    store = load_parent_store(parent_store_path)
+    store[parent_id] = text
+    with open(parent_store_path, "w", encoding="utf-8") as f:
+        json.dump(store, f, ensure_ascii=False, indent=2)

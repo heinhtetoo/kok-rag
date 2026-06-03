@@ -4,6 +4,7 @@ from src.constants import RECIPE_DIR, PARENT_STORE_PATH
 from src.utils import save_parent
 
 def ingest_recipe_chunks(filename: str = None) -> list[str]:
+    parent_id = filename.removesuffix(".txt")
     chunks = []
 
     # Initialise a splitter that looks for natural breaks (newlines, periods)
@@ -18,8 +19,7 @@ def ingest_recipe_chunks(filename: str = None) -> list[str]:
         file_path = os.path.join(RECIPE_DIR, filename)
         with open(file_path, "r", encoding="utf-8") as f:
             text = f.read()
-            title = filename.removesuffix(".txt")
-            save_parent(parent_store_path=PARENT_STORE_PATH, parent_id=title, text=text)
+            save_parent(parent_store_path=PARENT_STORE_PATH, parent_id=parent_id, text=text)
 
             # Document splitting
             file_chunks = splitter.split_text(text)
@@ -27,4 +27,4 @@ def ingest_recipe_chunks(filename: str = None) -> list[str]:
 
             print(f"[INFO] Loaded {filename}: Split into {len(file_chunks)} chunks.")
 
-    return chunks
+    return chunks, parent_id

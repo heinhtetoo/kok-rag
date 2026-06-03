@@ -177,12 +177,12 @@ async def ingest_url(request: IngestRequest):
             raise HTTPException(status_code=400, detail="Failed to scrape the provided URL. Please ensure it's a supported recipe URL.")
         
         # INGEST the scraped recipe into chunks
-        chunks = ingest_recipe_chunks(recipe_file)
+        chunks, parent_id = ingest_recipe_chunks(recipe_file)
         if not chunks:
             raise HTTPException(status_code=400, detail="Failed to ingest the recipe. No chunks were created.")
 
         # EMBED the chunks into the vector database
-        chunks_added = embed_chunks(chunks, collection, request.url, request.cuisine, request.dish_type)
+        chunks_added = embed_chunks(chunks, parent_id, collection, request.url, request.cuisine, request.dish_type)
         if not chunks_added:
             raise HTTPException(status_code=400, detail="Failed to embed the recipe chunks.")
 

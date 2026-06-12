@@ -23,7 +23,7 @@ A production-grade **Retrieval-Augmented Generation (RAG)** system for culinary 
 ┌─────────────┐        ┌──────────────────────────────────────────────────────┐
 │  Streamlit  │───────▸│                   FastAPI Service                    │
 │  Dashboard  │  HTTP  │                                                      │
-│  (kok-ui)   │◂───────│  /ask ──▸ Filter Extraction ──▸ Vector Retrieval     │
+│  (kok-ui)   │◂───────│  /ask    ──▸ Filter Extraction ──▸ Vector Retrieval  │
 └─────────────┘        │          ──▸ Parent Resolution ──▸ Cross-Encoder     │
                        │          ──▸ Prompt Augmentation ──▸ LLM Generation  │
                        │                                                      │

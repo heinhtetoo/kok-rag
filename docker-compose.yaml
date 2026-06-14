@@ -36,6 +36,10 @@ services:
       ]
     ports:
       - "8501:8501"
+    env_file:
+      - .env
+    environment:
+      - KOK_API_URL=http://kok-api:8000
     depends_on:
       - api
     networks:

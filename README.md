@@ -14,28 +14,31 @@ A production-grade **Retrieval-Augmented Generation (RAG)** system for culinary 
 - **API-Key Authentication** — Secure all endpoints behind header-based API key validation.
 - **Fully Containerised** — One-command deployment with Docker Compose; connects to a shared Ollama LLM service over a Docker network.
 - **Interactive Web Dashboard** — A Streamlit chat UI for end-users, with source-chunk inspection.
+- **Health Check Endpoint** — `GET /health` verifies connectivity to ChromaDB and Ollama.
 
 ---
 
 ## 🏗️ Architecture
 
 ```
-┌─────────────┐        ┌──────────────────────────────────────────────────────┐
-│  Streamlit  │───────▸│                   FastAPI Service                    │
-│  Dashboard  │  HTTP  │                                                      │
-│  (kok-ui)   │◂───────│  /ask    ──▸ Filter Extraction ──▸ Vector Retrieval  │
-└─────────────┘        │          ──▸ Parent Resolution ──▸ Cross-Encoder     │
-                       │          ──▸ Prompt Augmentation ──▸ LLM Generation  │
-                       │                                                      │
-                       │  /ingest ──▸ Web Scraper ──▸ Chunking ──▸ Embeddin   │
-                       └──────────────────────────┬───────────────────────────┘
-                                                  │
-                             ┌────────────────────┼────────────────────┐
-                             │                    │                    │
-                       ┌─────▼─────┐     ┌────────▼─────────┐   ┌──────▼──────┐
-                       │ ChromaDB  │     │  Parent Store    │   │   Ollama    │
-                       │ (Vectors) │     │  (JSON on disk)  │   │   (LLM)     │
-                       └───────────┘     └──────────────────┘   └─────────────┘
+┌─────────────┐        ┌─────────────────────────────────────────────────────────┐
+│  Streamlit  │───────▸│                   FastAPI Service                       │
+│  Dashboard  │  HTTP  │                                                         │
+│  (kok-ui)   │◂───────│  /ask ──▸ Filter Extraction ──▸ Vector Retrieval        │
+└─────────────┘        │       ──▸ Parent Resolution ──▸ Cross-Encoder           │
+                       │       ──▸ Prompt Augmentation ──▸ LLM Generation        │
+                       │                                                         │
+                       │  /ingest ──▸ Web Scraper ──▸ Chunking ──▸ Embedding     │
+                       │                                                         │
+                       │  /health ──▸ ChromaDB + Ollama connectivity check       │
+                       └────────────────────────────┬────────────────────────────┘
+                                                    │
+                                ┌───────────────────┼────────────────────┐
+                                │                   │                    │
+                          ┌─────▼─────┐    ┌────────▼────────┐    ┌──────▼──────┐
+                          │ ChromaDB  │    │  Parent Store   │    │    Ollama   │
+                          │ (Vectors) │    │  (JSON on disk) │    │    (LLM)    │
+                          └───────────┘    └─────────────────┘    └─────────────┘
 ```
 
 ### RAG Pipeline — `/ask`
@@ -71,8 +74,9 @@ A production-grade **Retrieval-Augmented Generation (RAG)** system for culinary 
 | **Text Splitting**   | [LangChain Text Splitters](https://python.langchain.com/docs/how_to/recursive_text_splitter/)                    | Recursive character-based chunking with semantic separators |
 | **Web Scraping**     | [BeautifulSoup4](https://www.crummy.com/software/BeautifulSoup/) + [Requests](https://docs.python-requests.org/) | Structured HTML parsing                                     |
 | **Web Dashboard**    | [Streamlit](https://streamlit.io/)                                                                               | Chat-based UI with session state and source inspection      |
-| **Data Validation**  | [Pydantic](https://docs.pydantic.dev/)                                                                           | Request/response schema enforcement                         |
+| **Configuration**    | [Pydantic Settings](https://docs.pydantic.dev/latest/concepts/pydantic_settings/)                                | Type-safe environment variable management                   |
 | **Containerisation** | [Docker](https://www.docker.com/) + [Docker Compose](https://docs.docker.com/compose/)                           | Reproducible, multi-service deployment                      |
+| **Linting**          | [Ruff](https://docs.astral.sh/ruff/)                                                                             | Fast Python linter and formatter                            |
 | **Language**         | Python 3.11                                                                                                      | Runtime                                                     |
 
 ---
@@ -110,6 +114,14 @@ The API server and the Streamlit dashboard run as **independent containers**, co
 - Separation of concerns between the data/retrieval backend and the presentation layer.
 - The ability to swap the UI entirely (e.g., with a mobile app) without touching the backend.
 
+### FastAPI Lifespan Management
+
+Heavy resources (ChromaDB client, embedding model, cross-encoder) are initialised during application **startup** via FastAPI's `lifespan` context manager and stored on `app.state`. This avoids module-level side effects, enables graceful shutdown, and facilitates testing.
+
+### Dependency Injection
+
+All shared resources (database connections, LLM clients, authentication) are provided via FastAPI's dependency injection system. This eliminates global mutable state and makes every component independently testable.
+
 ---
 
 ## 🏭 Industrial Standards
@@ -118,14 +130,19 @@ The API server and the Streamlit dashboard run as **independent containers**, co
 | ----------------------------- | ----------------------------------------------------------------------------------------------------- |
 | **API Security**              | Header-based API key authentication (`X-API-Key`) on all endpoints via FastAPI's dependency injection |
 | **Input Validation**          | Pydantic models enforce typed request/response contracts with automatic 422 error responses           |
-| **Environment Configuration** | Secrets and runtime config managed via `.env` files — never hardcoded                                 |
+| **Centralised Configuration** | `pydantic-settings` loads all config from `.env` with type validation and sensible defaults           |
+| **Structured Logging**        | Python `logging` module with structured format, configurable log levels — no `print()` statements     |
 | **Containerisation**          | Slim Python base image, multi-service Compose, external network for LLM sharing                       |
 | **Persistent Storage**        | Vector DB and data directories are volume-mounted, surviving container restarts                       |
 | **Idempotent Writes**         | `upsert` operations prevent duplicate embeddings on re-ingestion                                      |
 | **Error Handling**            | Structured HTTP error responses (`400`, `403`, `500`) with descriptive messages                       |
-| **Separation of Concerns**    | Modular codebase — scraping, ingestion, embedding, chat, API, and UI in distinct modules              |
+| **Layered Architecture**      | Routers → Services → Core separation with clear dependency boundaries                                 |
+| **Dependency Injection**      | FastAPI DI for auth, DB clients, and ML models — no global mutable state                              |
+| **Lifespan Management**       | FastAPI `lifespan` for startup/shutdown of heavyweight resources                                      |
+| **Health Checks**             | `GET /health` endpoint for container orchestration and monitoring                                     |
+| **Linting & Formatting**      | Ruff configured via `pyproject.toml` for consistent code style                                        |
 | **Version Control**           | Conventional commit messages (`feat:`, `fix:`, `chore:`, `refactor:`) for clear project history       |
-| **Secrets Management**        | `.env` excluded from version control via `.gitignore`; vector DB artifacts also ignored               |
+| **Secrets Management**        | `.env` excluded from version control via `.gitignore`; `.env.example` provided for onboarding         |
 
 ---
 
@@ -170,6 +187,7 @@ The API server and the Streamlit dashboard run as **independent containers**, co
    |---|---|
    | FastAPI (API + Docs) | [http://localhost:8000/docs](http://localhost:8000/docs) |
    | Streamlit Dashboard | [http://localhost:8501](http://localhost:8501) |
+   | Health Check | [http://localhost:8000/health](http://localhost:8000/health) |
 
 ### Local Development (without Docker)
 
@@ -179,7 +197,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 
 # Start the API server
-uvicorn src.api:app --reload --port 8000
+uvicorn src.main:app --reload --port 8000
 
 # Start the Streamlit UI (in a separate terminal)
 streamlit run src/ui.py
@@ -188,6 +206,18 @@ streamlit run src/ui.py
 ---
 
 ## 📡 API Reference
+
+### `GET /health`
+
+Check service health and dependency connectivity.
+
+```json
+{
+  "status": "healthy",
+  "chromadb": "healthy",
+  "ollama": "healthy"
+}
+```
 
 ### `POST /ask`
 
@@ -241,20 +271,37 @@ Ingest a recipe from a supported URL.
 ```
 kok-rag/
 ├── src/
-│   ├── api.py          # FastAPI application — /ask and /ingest endpoints
-│   ├── chat.py         # Standalone CLI chat (development utility)
-│   ├── constants.py    # Centralised path and collection name constants
-│   ├── embed.py        # Vector embedding and ChromaDB upsert logic
-│   ├── ingest.py       # Parent-child document chunking with LangChain
-│   ├── scrape.py       # Web scraping for supported recipe sites
-│   ├── ui.py           # Streamlit chat dashboard
-│   └── utils.py        # LLM filter extraction, parent store I/O
-├── data/recipes/       # Scraped recipe text files
-├── vector_db/          # ChromaDB persistent storage (git-ignored)
-├── Dockerfile          # Python 3.11-slim container image
-├── docker-compose.yaml # Multi-service orchestration
-├── requirements.txt    # Pinned Python dependencies
-├── .env                # Environment variables (git-ignored)
+│   ├── __init__.py
+│   ├── main.py              # App factory with lifespan management
+│   ├── config.py            # Pydantic Settings for centralised configuration
+│   ├── dependencies.py      # FastAPI dependency injection providers
+│   ├── core/
+│   │   ├── __init__.py
+│   │   ├── constants.py     # Application-wide constants
+│   │   └── logging.py       # Structured logging configuration
+│   ├── models/
+│   │   ├── __init__.py
+│   │   └── schemas.py       # Pydantic request/response schemas
+│   ├── routers/
+│   │   ├── __init__.py
+│   │   ├── ask.py           # POST /ask — recipe Q&A
+│   │   ├── ingest.py        # POST /ingest — recipe ingestion
+│   │   └── health.py        # GET /health — service health check
+│   ├── services/
+│   │   ├── __init__.py
+│   │   ├── retrieval.py     # RAG pipeline: retrieval, re-ranking, generation
+│   │   ├── ingestion.py     # Document chunking and parent store management
+│   │   ├── scraper.py       # Web scraping for supported recipe sites
+│   │   └── embedding.py     # Vector embedding and ChromaDB storage
+│   └── ui.py                # Streamlit chat dashboard
+├── data/recipes/            # Scraped recipe text files
+├── vector_db/               # ChromaDB persistent storage (git-ignored)
+├── Dockerfile               # Python 3.11-slim container image
+├── docker-compose.yaml      # Multi-service orchestration
+├── pyproject.toml           # Project metadata, Ruff & pytest config
+├── requirements.txt         # Pinned Python dependencies
+├── .env                     # Environment variables (git-ignored)
+├── .env.example             # Environment variable template
 └── .gitignore
 ```
 

@@ -1,10 +1,17 @@
-import streamlit as st
+"""Streamlit chat dashboard for the Kök RAG API."""
+
+import os
+
 import requests
+import streamlit as st
 
 st.set_page_config(page_title="Kök RAG", page_icon="👨‍🍳")
 
 st.title("👨‍🍳 The AI Sous-Chef")
 st.markdown("Ask me anything about your recipes. I only know what's in the book!")
+
+API_BASE_URL = os.getenv("KOK_API_URL", "http://kok-api:8000")
+API_KEY = os.getenv("KOK_API_KEY", "")
 
 # Initialise chat history in Streamlit session state
 if "messages" not in st.session_state:
@@ -27,8 +34,12 @@ if prompt := st.chat_input("E.g., How long do I simmer the beef?"):
         message_placeholder = st.empty()
 
         try:
-            # Call the FastAPI container (Streamlit runs server-side, so 'kok-api' resolves via Docker DNS)
-            response = requests.post("http://kok-api:8000/ask", json={"question": prompt})
+            # Call the FastAPI service with authentication
+            response = requests.post(
+                f"{API_BASE_URL}/ask",
+                json={"question": prompt},
+                headers={"X-API-Key": API_KEY},
+            )
 
             if response.status_code == 200:
                 data = response.json()
@@ -40,9 +51,9 @@ if prompt := st.chat_input("E.g., How long do I simmer the beef?"):
                 # Show the sources in an expandable dropdown
                 with st.expander("View Source Chunks"):
                     for i, source in enumerate(data["sources"]):
-                        st.text(f"Chunk {i+1}:\n{source}")
+                        st.text(f"Chunk {i + 1}:\n{source}")
 
-                    st.session_state.messages.append({"role": "assistant", "content": answer})
+                st.session_state.messages.append({"role": "assistant", "content": answer})
             else:
                 message_placeholder.error(f"API Error: {response.status_code}")
         except Exception as e:

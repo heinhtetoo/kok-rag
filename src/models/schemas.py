@@ -18,6 +18,7 @@ class QueryResponse(BaseModel):
 
     answer: str
     sources: list[str]
+    tool_used: str = "none"  # "recipe_book" | "web_search" | "none"
 
 
 class IngestRequest(BaseModel):

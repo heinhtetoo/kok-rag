@@ -13,6 +13,12 @@ st.markdown("Ask me anything about your recipes. I only know what's in the book!
 API_BASE_URL = os.getenv("KOK_API_URL", "http://kok-api:8000")
 API_KEY = os.getenv("KOK_API_KEY", "")
 
+_TOOL_BADGE: dict[str, str] = {
+    "recipe_book": "📚 Recipe Book",
+    "web_search": "🌐 Web Search",
+    "none": "💬 Direct",
+}
+
 # Initialise chat history in Streamlit session state
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -44,14 +50,21 @@ if prompt := st.chat_input("E.g., How long do I simmer the beef?"):
             if response.status_code == 200:
                 data = response.json()
                 answer = data["answer"]
+                tool_used = data.get("tool_used", "none")
+                sources = data.get("sources", [])
 
                 # Display the answer
                 message_placeholder.markdown(answer)
 
-                # Show the sources in an expandable dropdown
-                with st.expander("View Source Chunks"):
-                    for i, source in enumerate(data["sources"]):
-                        st.text(f"Chunk {i + 1}:\n{source}")
+                # Show which tool was used as a subtle caption
+                badge = _TOOL_BADGE.get(tool_used, "💬 Direct")
+                st.caption(f"Source: {badge}")
+
+                # Show recipe source chunks in an expandable section (recipe book only)
+                if sources:
+                    with st.expander("View Source Chunks"):
+                        for i, source in enumerate(sources):
+                            st.text(f"Chunk {i + 1}:\n{source}")
 
                 st.session_state.messages.append({"role": "assistant", "content": answer})
             else:

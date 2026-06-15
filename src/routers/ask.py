@@ -1,4 +1,4 @@
-"""Recipe Q&A endpoint."""
+"""Recipe Q&A endpoint — powered by the agentic tool-calling loop."""
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -10,11 +10,7 @@ from src.dependencies import (
     verify_api_key,
 )
 from src.models.schemas import QueryRequest, QueryResponse
-from src.services.retrieval import (
-    extract_filters_from_query,
-    generate_answer,
-    retrieve_and_rerank,
-)
+from src.services.agent import run_agent
 
 router = APIRouter(tags=["Recipes"])
 
@@ -30,44 +26,33 @@ async def ask_kok(
     ollama_client=Depends(get_ollama_client),  # noqa: B008
     cross_encoder=Depends(get_cross_encoder),  # noqa: B008
 ) -> QueryResponse:
-    """Ask a natural-language question about your recipes.
+    """Ask a natural-language question about recipes or culinary topics.
 
-    The pipeline extracts metadata filters, retrieves relevant chunks,
-    resolves parent documents, re-ranks with a cross-encoder, and
-    generates a grounded answer via the LLM.
+    The underlying agent autonomously decides which tool to invoke:
+    - ``search_recipe_book`` — for questions about saved recipes (default)
+    - ``search_web`` — when the user explicitly requests web results
+
+    The ``tool_used`` field in the response indicates which tool was called.
     """
     settings = get_settings()
 
     try:
-        # Extract metadata filters from the question
-        extracted_filters = extract_filters_from_query(
-            request.question, ollama_client, settings.ollama_model
-        )
-
-        # Retrieve and re-rank parent documents
-        top_parents = retrieve_and_rerank(
+        result = run_agent(
             question=request.question,
+            ollama_client=ollama_client,
+            model=settings.ollama_model,
             collection=collection,
             cross_encoder=cross_encoder,
             parent_store_path=settings.parent_store_path,
-            extracted_filters=extracted_filters,
+            web_search_max_results=settings.web_search_max_results,
+            max_iterations=settings.agent_max_iterations,
         )
 
-        if not top_parents:
-            return QueryResponse(
-                answer="I don't have that in your recipe book.",
-                sources=[],
-            )
-
-        # Generate a grounded answer
-        answer = generate_answer(
-            question=request.question,
-            context_documents=top_parents,
-            ollama_client=ollama_client,
-            model=settings.ollama_model,
+        return QueryResponse(
+            answer=result.answer,
+            sources=result.sources,
+            tool_used=result.tool_used,
         )
-
-        return QueryResponse(answer=answer, sources=top_parents)
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e

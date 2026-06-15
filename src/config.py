@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     embedding_model: str = "all-MiniLM-L6-v2"
     reranker_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
+    # Agent
+    agent_max_iterations: int = 5
+    web_search_max_results: int = 5
+
     # Logging
     log_level: str = "INFO"
 

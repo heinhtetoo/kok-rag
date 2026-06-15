@@ -12,7 +12,7 @@ services:
     environment:
       # Point the python script to the container named "ollama"
       - OLLAMA_HOST=http://ollama:11434
-      - OLLAMA_MODEL=qwen2.5:7b
+      - OLLAMA_MODEL=gemma3:4b
     volumes:
       # Map the host's relative directory to the container's app directory
       - ./vector_db:/app/vector_db

@@ -13,7 +13,7 @@ avoiding the need to parse results a second time after the loop.
 from dataclasses import dataclass, field
 
 import chromadb
-from duckduckgo_search import DDGS
+from ddgs import DDGS
 from sentence_transformers import CrossEncoder
 
 from src.core.logging import get_logger

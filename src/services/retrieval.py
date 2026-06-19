@@ -3,6 +3,7 @@
 import chromadb
 from sentence_transformers import CrossEncoder
 
+from src.config import get_settings
 from src.core.logging import get_logger
 from src.services.ingestion import load_parent_store
 from src.services.search import BM25Index, reciprocal_rank_fusion
@@ -97,12 +98,16 @@ def retrieve_and_rerank(
     pairs = [[question, parent_text] for parent_text in candidate_parents]
     scores = cross_encoder.predict(pairs)
 
+    logger.debug("Re-rank scores: %s", list(zip(fused_parent_ids, scores, strict=False)))
+
     scored_parents = sorted(
         zip(scores, candidate_parents, strict=False), key=lambda x: x[0], reverse=True
     )
 
-    # Note: Threshold improvement is in Phase 5, so sticking with > 0 here for now.
-    top_parents = [doc for score, doc in scored_parents[:2] if score > 0]
+    settings = get_settings()
+    threshold = settings.reranker_score_threshold
+
+    top_parents = [doc for score, doc in scored_parents[:2] if score > threshold]
     logger.info(
         "Re-ranking complete: %d/%d parents passed threshold",
         len(top_parents),

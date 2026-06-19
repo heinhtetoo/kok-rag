@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     # ML Models
     embedding_model: str = "BAAI/bge-small-en-v1.5"
     reranker_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    reranker_score_threshold: float = 1.0
 
     # Agent
     agent_max_iterations: int = 5

@@ -11,37 +11,38 @@ def embed_chunks(
     chunks: list[str],
     parent_id: str,
     collection: chromadb.Collection,
-    url: str,
-    cuisine: str,
-    dish_type: str,
+    metadata_template: dict,
 ) -> int:
     """Embed text chunks and upsert them into the vector database.
 
     Each chunk is stored with metadata linking it back to its parent document,
-    source URL, cuisine, and dish type. Uses ``upsert`` for idempotent writes.
+    source URL, cuisine, dish type, and more. Uses ``upsert`` for idempotent writes.
 
     Args:
         chunks: List of text chunks to embed.
         parent_id: The parent document identifier.
         collection: ChromaDB collection instance.
-        url: Source URL of the recipe.
-        cuisine: Cuisine category metadata.
-        dish_type: Dish type metadata.
+        metadata_template: Dictionary with baseline metadata for all chunks.
 
     Returns:
         Number of chunks successfully stored.
     """
+    # Suggestion 7: Delete existing chunks before re-ingesting to prevent stale orphans
+    collection.delete(where={"parent_id": parent_id})
+
     ids = [f"{parent_id}_child_{i}" for i in range(len(chunks))]
 
-    metadatas = [
-        {
-            "parent_id": parent_id,
-            "source": url,
-            "cuisine": cuisine,
-            "dish_type": dish_type,
-        }
-        for _ in chunks
-    ]
+    metadatas = []
+    for chunk in chunks:
+        meta = metadata_template.copy()
+
+        # Simple heuristic to add 'section' metadata for targeted filtering
+        if "INGREDIENTS:" in chunk and "INSTRUCTIONS:" not in chunk:
+            meta["section"] = "ingredients"
+        elif "INSTRUCTIONS:" in chunk:
+            meta["section"] = "instructions"
+
+        metadatas.append(meta)
 
     collection.upsert(documents=chunks, ids=ids, metadatas=metadatas)
 

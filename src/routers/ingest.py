@@ -3,10 +3,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from src.config import get_settings
-from src.dependencies import get_collection, verify_api_key
+from src.dependencies import get_bm25_index, get_collection, verify_api_key
 from src.models.schemas import IngestRequest, IngestResponse
 from src.services.embedding import embed_chunks
-from src.services.ingestion import chunk_recipe
+from src.services.ingestion import chunk_recipe, load_parent_store
 from src.services.scraper import scrape_recipe
 
 router = APIRouter(tags=["Recipes"])
@@ -20,6 +20,7 @@ router = APIRouter(tags=["Recipes"])
 async def ingest_url(
     request: IngestRequest,
     collection=Depends(get_collection),  # noqa: B008
+    bm25_index=Depends(get_bm25_index),  # noqa: B008
 ) -> IngestResponse:
     """Ingest a recipe from a supported URL.
 
@@ -30,17 +31,15 @@ async def ingest_url(
 
     try:
         # Scrape the recipe
-        recipe_file = scrape_recipe(request.url, settings.recipe_dir)
-        if not recipe_file:
+        recipe = scrape_recipe(request.url, request.cuisine, request.dish_type)
+        if not recipe:
             raise HTTPException(
                 status_code=400,
                 detail="Failed to scrape the provided URL. Please ensure it's a supported recipe URL.",
             )
 
         # Split into chunks
-        chunks, parent_id = chunk_recipe(
-            recipe_file, settings.recipe_dir, settings.parent_store_path
-        )
+        chunks, parent_id = chunk_recipe(recipe, settings.parent_store_path)
         if not chunks:
             raise HTTPException(
                 status_code=400,
@@ -52,9 +51,7 @@ async def ingest_url(
             chunks,
             parent_id,
             collection,
-            request.url,
-            request.cuisine,
-            request.dish_type,
+            recipe.to_metadata(parent_id),
         )
         if not chunks_added:
             raise HTTPException(
@@ -62,9 +59,12 @@ async def ingest_url(
                 detail="Failed to embed the recipe chunks.",
             )
 
+        # Rebuild BM25 index with new document
+        bm25_index.build(load_parent_store(settings.parent_store_path))
+
         return IngestResponse(
-            message="Successfully ingested with Parent-Child chunking!",
-            title=recipe_file,
+            message="Successfully ingested with section-aware chunking!",
+            title=recipe.title,
             chunks_added=chunks_added,
         )
 

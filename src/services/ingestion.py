@@ -2,54 +2,81 @@
 
 import json
 import os
+import re
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from src.core.logging import get_logger
+from src.models.recipe import Recipe
 
 logger = get_logger(__name__)
 
 
+def chunk_recipe_by_section(recipe: Recipe) -> list[str]:
+    """Split a recipe into semantic chunks by section."""
+    title_line = f"Title: {recipe.title}"
+    text = recipe.raw_text
+
+    # Split on boundaries
+    sections = re.split(r"\n(?=INGREDIENTS:|INSTRUCTIONS:)", text)
+
+    chunks = []
+    fallback_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=500,
+        chunk_overlap=50,
+        separators=["\n\n", "\n", ". ", " ", "."],
+    )
+
+    for section in sections:
+        sec_text = section.strip()
+        if not sec_text:
+            continue
+
+        # Ignore the title/source block alone if it was split
+        if (
+            sec_text.startswith("Title:")
+            and "INGREDIENTS:" not in sec_text
+            and "INSTRUCTIONS:" not in sec_text
+        ):
+            continue
+
+        chunk_content = f"{title_line}\n\n{sec_text}"
+        if len(chunk_content) > 500:
+            sub_chunks = fallback_splitter.split_text(chunk_content)
+            chunks.extend(sub_chunks)
+        else:
+            chunks.append(chunk_content)
+
+    return chunks
+
+
 def chunk_recipe(
-    filename: str,
-    recipe_dir: str,
+    recipe: Recipe,
     parent_store_path: str,
 ) -> tuple[list[str], str]:
-    """Split a recipe file into chunks using the parent-child strategy.
+    """Split a recipe object into chunks using the section-aware strategy.
 
     The full recipe text is saved as the parent document in a JSON sidecar
-    store, and small child chunks are returned for vector embedding.
+    store, and section-aware child chunks are returned for vector embedding.
 
     Args:
-        filename: Name of the recipe text file.
-        recipe_dir: Directory containing recipe files.
+        recipe: Recipe object to chunk.
         parent_store_path: Path to the parent document JSON store.
 
     Returns:
         A tuple of ``(child_chunks, parent_id)``.
-
-    Raises:
-        FileNotFoundError: If the recipe file does not exist.
     """
-    parent_id = filename.removesuffix(".txt")
+    # Create a safe parent ID from the title
+    parent_id = re.sub(r"[^a-z0-9]", "-", recipe.title.lower())
+    if not parent_id:
+        import uuid
 
-    file_path = os.path.join(recipe_dir, filename)
-    if not os.path.isfile(file_path) or not filename.endswith(".txt"):
-        raise FileNotFoundError(f"Recipe file not found: {file_path}")
+        parent_id = uuid.uuid4().hex
 
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=150,
-        chunk_overlap=20,
-        separators=["\n\n", "\n", ". ", " ", "."],
-    )
+    save_parent(parent_store_path, parent_id, recipe.raw_text)
 
-    with open(file_path, encoding="utf-8") as f:
-        text = f.read()
-
-    save_parent(parent_store_path, parent_id, text)
-
-    chunks = splitter.split_text(text)
-    logger.info("Split '%s' into %d child chunks", filename, len(chunks))
+    chunks = chunk_recipe_by_section(recipe)
+    logger.info("Split '%s' into %d child chunks", recipe.title, len(chunks))
 
     return chunks, parent_id
 

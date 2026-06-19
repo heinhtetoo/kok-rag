@@ -18,6 +18,7 @@ from ollama import Client as OllamaClient
 from sentence_transformers import CrossEncoder
 
 from src.core.logging import get_logger
+from src.services.search import BM25Index
 from src.services.tools import ToolState, make_tools
 
 logger = get_logger(__name__)
@@ -78,6 +79,7 @@ def run_agent(
     collection: chromadb.Collection,
     cross_encoder: CrossEncoder,
     parent_store_path: str,
+    bm25_index: BM25Index,
     web_search_max_results: int,
     max_iterations: int = 5,
 ) -> AgentResult:
@@ -109,6 +111,7 @@ def run_agent(
         collection=collection,
         cross_encoder=cross_encoder,
         parent_store_path=parent_store_path,
+        bm25_index=bm25_index,
         web_search_max_results=web_search_max_results,
         state=state,
     )

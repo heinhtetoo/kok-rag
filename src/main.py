@@ -11,6 +11,8 @@ from sentence_transformers import CrossEncoder
 from src.config import get_settings
 from src.core.logging import get_logger, setup_logging
 from src.routers import ask, health, ingest
+from src.services.ingestion import load_parent_store
+from src.services.search import BM25Index
 
 logger = get_logger(__name__)
 
@@ -45,6 +47,12 @@ async def lifespan(app: FastAPI):
     logger.info("Loading cross-encoder model '%s'...", settings.reranker_model)
     app.state.cross_encoder = CrossEncoder(settings.reranker_model)
     logger.info("Cross-encoder ready")
+
+    # Initialise BM25 Index
+    logger.info("Building BM25 index...")
+    app.state.bm25_index = BM25Index()
+    parent_store = load_parent_store(settings.parent_store_path)
+    app.state.bm25_index.build(parent_store)
 
     yield
 

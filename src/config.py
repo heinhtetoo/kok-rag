@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     parent_store_path: str = PARENT_STORE_PATH
 
     # ML Models
-    embedding_model: str = "all-MiniLM-L6-v2"
+    embedding_model: str = "BAAI/bge-small-en-v1.5"
     reranker_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
     # Agent

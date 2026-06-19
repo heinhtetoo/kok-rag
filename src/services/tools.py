@@ -18,6 +18,7 @@ from sentence_transformers import CrossEncoder
 
 from src.core.logging import get_logger
 from src.services.retrieval import retrieve_and_rerank
+from src.services.search import BM25Index
 
 logger = get_logger(__name__)
 
@@ -38,6 +39,7 @@ def make_tools(
     collection: chromadb.Collection,
     cross_encoder: CrossEncoder,
     parent_store_path: str,
+    bm25_index: BM25Index,
     web_search_max_results: int,
     state: ToolState,
 ) -> list:
@@ -77,6 +79,7 @@ def make_tools(
             collection=collection,
             cross_encoder=cross_encoder,
             parent_store_path=parent_store_path,
+            bm25_index=bm25_index,
             # Filters are intentionally omitted here: the LLM has already
             # distilled the query, so semantic search alone is sufficient.
             extracted_filters={"cuisine": None, "dish_type": None},

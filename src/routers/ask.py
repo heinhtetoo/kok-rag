@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from src.config import get_settings
 from src.dependencies import (
+    get_bm25_index,
     get_collection,
     get_cross_encoder,
     get_ollama_client,
@@ -25,6 +26,7 @@ async def ask_kok(
     collection=Depends(get_collection),  # noqa: B008
     ollama_client=Depends(get_ollama_client),  # noqa: B008
     cross_encoder=Depends(get_cross_encoder),  # noqa: B008
+    bm25_index=Depends(get_bm25_index),  # noqa: B008
 ) -> QueryResponse:
     """Ask a natural-language question about recipes or culinary topics.
 
@@ -44,6 +46,7 @@ async def ask_kok(
             collection=collection,
             cross_encoder=cross_encoder,
             parent_store_path=settings.parent_store_path,
+            bm25_index=bm25_index,
             web_search_max_results=settings.web_search_max_results,
             max_iterations=settings.agent_max_iterations,
         )

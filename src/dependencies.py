@@ -40,3 +40,8 @@ def get_ollama_client(request: Request):
 def get_cross_encoder(request: Request):
     """Retrieve the cross-encoder model from application state."""
     return request.app.state.cross_encoder
+
+
+def get_bm25_index(request: Request):
+    """Retrieve the BM25 index from application state."""
+    return request.app.state.bm25_index

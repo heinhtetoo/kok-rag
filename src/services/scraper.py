@@ -47,6 +47,7 @@ def _format_recipe_text(recipe: Recipe) -> str:
             recipe_text += f"{i}. {step}\n"
     else:
         recipe_text += "(Could not parse instructions)\n"
+    return recipe_text
 
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))

@@ -4,6 +4,7 @@ import json
 
 import requests
 from bs4 import BeautifulSoup
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 from src.core.logging import get_logger
 from src.models.recipe import Recipe
@@ -47,9 +48,8 @@ def _format_recipe_text(recipe: Recipe) -> str:
     else:
         recipe_text += "(Could not parse instructions)\n"
 
-    return recipe_text
 
-
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
 def _scrape_theburmalicious(url: str, cuisine: str, dish_type: str) -> Recipe | None:
     """Scrape a recipe from theburmalicious.com."""
     logger.info("Scraping: %s", url)
@@ -104,6 +104,7 @@ def _scrape_theburmalicious(url: str, cuisine: str, dish_type: str) -> Recipe | 
     return recipe
 
 
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
 def _scrape_jsonld_generic(url: str, cuisine: str, dish_type: str) -> Recipe | None:
     """Fallback scraper parsing schema.org/Recipe JSON-LD."""
     logger.info("Scraping generic JSON-LD: %s", url)

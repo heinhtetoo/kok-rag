@@ -73,6 +73,14 @@ def chunk_recipe(
 
         parent_id = uuid.uuid4().hex
 
+    store = load_parent_store(parent_store_path)
+    if parent_id in store:
+        logger.warning(
+            "Recipe '%s' (ID: %s) already exists. Re-ingesting and overwriting.",
+            recipe.title,
+            parent_id,
+        )
+
     save_parent(parent_store_path, parent_id, recipe.raw_text)
 
     chunks = chunk_recipe_by_section(recipe)
